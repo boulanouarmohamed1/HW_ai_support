@@ -150,13 +150,23 @@ def build_doctype_doc(doctype: str, user: str, lang: str) -> DoctypeKnowledge:
 			target = _doctype_label(df.options, lang)
 			labels[df.options] = target
 			detail += f" → {target}"
+		elif df.fieldtype == "Dynamic Link":
+			# `options` is the controlling *fieldname*, not a DocType (for example,
+			# Quotation's Party uses the value selected in Quotation To). Never pass
+			# it to get_meta(), which would create a misleading "DocType not found".
+			controller = meta.get_field(df.options) if df.options else None
+			controller_label = _translated(controller.label, lang) if controller and controller.label else _translated("Document type", lang)
+			if df.options:
+				names.add(df.options)
+				labels[df.options] = controller_label
+			detail += f" → {_translated('document chosen in', lang)} {controller_label}"
 		field_descriptions.append(detail)
 	if field_descriptions:
 		lines.append("Visible fields: " + "; ".join(field_descriptions[:45]) + ".")
 
 	outgoing = []
 	for df in meta.fields:
-		if df.fieldtype in {"Link", "Table", "Table MultiSelect", "Dynamic Link"} and df.options:
+		if df.fieldtype in {"Link", "Table", "Table MultiSelect"} and df.options:
 			outgoing.append(_doctype_label(df.options, lang))
 	if outgoing:
 		lines.append("Links to: " + ", ".join(list(dict.fromkeys(outgoing))[:20]) + ".")

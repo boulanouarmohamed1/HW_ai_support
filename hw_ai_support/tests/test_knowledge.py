@@ -26,6 +26,13 @@ class TestKnowledge(IntegrationTestCase):
 		self.assertIn("Cost Center", answer)
 		self.assertNotIn("cost_center", answer)
 
+	def test_dynamic_link_uses_its_controlling_field_label(self):
+		if not frappe.db.exists("DocType", "Quotation"):
+			self.skipTest("ERPNext Quotation is unavailable")
+		text = build_doctype_doc("Quotation", "Administrator", "en")
+		self.assertIn("Quotation To", text)
+		self.assertNotIn("DocType quotation_to not found", text)
+
 	def test_language_detection_including_arabic(self):
 		self.assertEqual(detect_language("كيف أنشئ فاتورة؟"), "ar")
 		self.assertEqual(detect_language("Comment créer un devis ?"), "fr")
