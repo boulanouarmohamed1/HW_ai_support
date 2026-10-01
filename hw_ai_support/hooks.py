@@ -8,7 +8,19 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["erpnext"]
+
+# The navbar entry is deliberately a small, dependency-free file.  The Vue
+# application itself is lazy loaded only when the Page is opened.
+app_include_js = ["/assets/hw_ai_support/js/hw_ai_navbar.js"]
+
+doc_events = {
+	"DocType": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Custom Field": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Property Setter": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Workflow": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"User": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache"},
+}
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -261,4 +273,3 @@ app_license = "mit"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
