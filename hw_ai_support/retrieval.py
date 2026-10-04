@@ -11,6 +11,7 @@ import frappe
 from hw_ai_support import llm
 from hw_ai_support.knowledge import DoctypeKnowledge, build_doctype_doc, get_accessible_doctypes
 from hw_ai_support.prompts import NORMALIZE_SYSTEM_PROMPT, normalization_messages
+from hw_ai_support.pdf_retrieval import retrieve_pdf_context
 
 SYNONYMS = {
 	"invoice": {"invoice", "facture", "فاتورة"},
@@ -41,10 +42,14 @@ class RetrievalResult:
 	labels: list[str]
 	known_names: set[str]
 	name_labels: dict[str, str]
+	pdf_context: str = ""
 
 	@property
 	def context(self) -> str:
-		return "\n\n".join(str(document) for document in self.documents)
+		parts = [str(document) for document in self.documents]
+		if self.pdf_context:
+			parts.append(self.pdf_context)
+		return "\n\n".join(parts)
 
 
 def detect_language(text: str) -> str:
@@ -107,7 +112,8 @@ def retrieve(question: str, user: str) -> RetrievalResult:
 	for document in documents:
 		known_names.update(document.known_internal_names)
 		name_labels.update(document.internal_name_labels)
-	return RetrievalResult(normalized, documents, [document.doctype_label for document in documents], known_names, name_labels)
+	pdf_context = retrieve_pdf_context(question, normalized.keywords)
+	return RetrievalResult(normalized, documents, [document.doctype_label for document in documents], known_names, name_labels, pdf_context)
 
 
 def retrieve_with_labels(question: str, user: str) -> RetrievalResult:

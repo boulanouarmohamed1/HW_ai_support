@@ -81,6 +81,11 @@ def chat(message: str | None = None, history=None, language: str | None = None) 
 		return {"reply": reply, "language": response_language, "doctypes_used": result.labels}
 	except frappe.ValidationError:
 		raise
+	except llm.LLMError as exc:
+		frappe.log_error(title="HW AI Support chat provider error", message=str(exc))
+		friendly = str(exc)
+		_log(user=user, question=message.strip(), answer=friendly, language=response_language, doctypes_used="", status="Error", sanitized=0, error=friendly, response_time_ms=int((time.monotonic() - started) * 1000))
+		return {"reply": friendly, "language": response_language, "error": True}
 	except Exception:
 		frappe.log_error(title="HW AI Support chat error", message=frappe.get_traceback())
 		friendly = _friendly_error(response_language)

@@ -28,6 +28,8 @@ def _key() -> str | None:
 
 def _provider_error(message: str, exc: Exception | None = None) -> LLMError:
 	frappe.log_error(title="HW AI Support Gemini error", message=message if exc is None else f"{message}: {exc!r}")
+	if "403" in message or "permission_denied" in message.lower():
+		return LLMError("Google denied access for the project behind this Gemini API key. Use a key from an allowed Google AI Studio project or contact Google support.")
 	return LLMError("The AI service is unavailable.")
 
 
