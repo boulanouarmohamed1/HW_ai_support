@@ -167,7 +167,7 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+# scheduler_events = {"daily": ["hw_ai_support.tasks.purge_old_logs"]}
 # 	"all": [
 # 		"hw_ai_support.tasks.all"
 # 	],
@@ -273,3 +273,7 @@ doc_events = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
+
+scheduler_events = {"daily": ["hw_ai_support.tasks.purge_old_logs"]}
+
+

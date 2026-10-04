@@ -70,6 +70,42 @@ def chat(message: str | None = None, history=None, language: str | None = None) 
 	started = time.monotonic()
 	user = frappe.session.user
 	response_language = language if language in {"en", "fr", "ar"} else detect_language(message)
+	if any(term in message.lower() for term in ("stock", "inventory", "inventaire", "\u0645\u062e\u0632\u0648\u0646")):
+		try:
+			settings = frappe.get_single("HW AI Support Settings")
+			enabled = bool(settings.tools_enabled and settings.business_data_mode != "Disabled")
+		except Exception:
+			enabled = False
+		if enabled:
+			from hw_ai_support.tools.data import get_stock_balance, search_items
+			import re
+			explicit = re.search(r"(?:item|article~'F7FA)\s+([A-Za-z0-9_.-]+)", message, re.IGNORECASE)
+			code_match = explicit or re.search(r"\b[A-Z][A-Z0-9_.-]*_[A-Z0-9_-]+\b", message)
+			item_code = code_match.group(1) if explicit else (code_match.group(0) if code_match else None)
+			if not item_code:
+				phrase_match = re.search(r"(?:item|article)\s+(.+?)(?:\\?|$)", message, re.IGNORECASE)
+				query = phrase_match.group(1).strip() if phrase_match else ""
+				candidates = search_items(query, user=user).get("candidates", []) if query else []
+				if len(candidates) == 1:
+					item_code = candidates[0].name
+				elif candidates:
+					labels = ", ".join(f"{row.name} ({row.item_name})" for row in candidates)
+					reply = f"Please specify which item you mean: {labels}."
+					return {"reply": reply, "language": response_language, "doctypes_used": ["Item"], "sources": ["Item search"]}
+				else:
+					reply = "Please include an item code, for example SKU_001."
+					return {"reply": reply, "language": response_language, "doctypes_used": [], "sources": []}
+			data = get_stock_balance(item_code=item_code, user=user)
+			qty = data.get("total_quantity", 0)
+			if response_language == "fr":
+				reply = f"Le stock disponible pour {item_code} est de {qty} unites."
+			elif response_language == "ar":
+				reply = f"\\u0627\\u0644\\u0631\\u0635\\u064a\\u062f \\u0627\\u0644\\u0645\\u062a\\u0627\\u062d \\u0644\\u0644\\u0635\\u0646\\u0641 {item_code} \\u0647\\u0648 {qty} \\u0648\\u062d\\u062f\\u0629."
+			else:
+				reply = f"The available stock for {item_code} is {qty} units."
+			_log(user=user, question=message.strip(), answer=reply, language=response_language, doctypes_used="Item, Bin", status="Success", sanitized=0, response_time_ms=int((time.monotonic() - started) * 1000))
+			return {"reply": reply, "language": response_language, "doctypes_used": ["Item", "Bin"], "sources": ["Stock balance"]}
+
 	try:
 		result = retrieve_with_labels(message.strip(), user)
 		response_language = result.normalized.language if result.normalized.language in {"en", "fr", "ar"} else "en"
@@ -81,8 +117,20 @@ def chat(message: str | None = None, history=None, language: str | None = None) 
 		return {"reply": reply, "language": response_language, "doctypes_used": result.labels}
 	except frappe.ValidationError:
 		raise
+	except llm.LLMError as exc:
+		frappe.log_error(title="HW AI Support chat provider error", message=str(exc))
+		friendly = str(exc)
+		_log(user=user, question=message.strip(), answer=friendly, language=response_language, doctypes_used="", status="Error", sanitized=0, error=friendly, response_time_ms=int((time.monotonic() - started) * 1000))
+		return {"reply": friendly, "language": response_language, "error": True}
 	except Exception:
 		frappe.log_error(title="HW AI Support chat error", message=frappe.get_traceback())
 		friendly = _friendly_error(response_language)
 		_log(user=user, question=message.strip(), answer=friendly, language=response_language, doctypes_used="", status="Error", sanitized=0, error="Provider or server failure", response_time_ms=int((time.monotonic() - started) * 1000))
 		return {"reply": friendly, "language": response_language, "error": True}
+
+
+
+
+
+
+

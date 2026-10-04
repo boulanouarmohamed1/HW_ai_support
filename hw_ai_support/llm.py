@@ -18,7 +18,7 @@ class LLMError(Exception):
 	"""Safe exception raised to the application layer for provider failures."""
 
 
-DEFAULT_MODEL = "gemini-3.5-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
@@ -28,6 +28,8 @@ def _key() -> str | None:
 
 def _provider_error(message: str, exc: Exception | None = None) -> LLMError:
 	frappe.log_error(title="HW AI Support Gemini error", message=message if exc is None else f"{message}: {exc!r}")
+	if "403" in message or "permission_denied" in message.lower():
+		return LLMError("The support service is temporarily unavailable.")
 	return LLMError("The AI service is unavailable.")
 
 
@@ -35,7 +37,7 @@ def ask(system_prompt: str, messages: list[dict[str, str]], json_mode: bool = Fa
 	"""Return Gemini's text response without exposing configuration or provider errors."""
 	key = _key()
 	if not key:
-		raise LLMError("The AI service is not configured.")
+		raise LLMError("The support service is temporarily unavailable.")
 
 	model = frappe.conf.get("gemini_model") or DEFAULT_MODEL
 	payload: dict[str, Any] = {
@@ -44,7 +46,7 @@ def ask(system_prompt: str, messages: list[dict[str, str]], json_mode: bool = Fa
 			for item in messages
 		],
 		"systemInstruction": {"parts": [{"text": system_prompt}]},
-		"generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024},
+		"generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048},
 	}
 	if json_mode:
 		payload["generationConfig"]["responseMimeType"] = "application/json"
@@ -82,3 +84,4 @@ def ask(system_prompt: str, messages: list[dict[str, str]], json_mode: bool = Fa
 			raise _provider_error("Gemini response failure", exc)
 
 	raise _provider_error("Gemini retry attempts exhausted")
+

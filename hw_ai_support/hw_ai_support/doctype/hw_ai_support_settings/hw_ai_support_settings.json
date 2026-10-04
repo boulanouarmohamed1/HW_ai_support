@@ -1,0 +1,32 @@
+{
+ "actions": [],
+ "creation": "2026-10-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": ["tools_enabled", "llm_provider", "llm_base_url", "llm_model", "tool_calling_mode", "business_data_mode", "hosted_consent", "consented_by", "consented_on", "pseudonymize_parties", "max_tool_iterations", "max_rows", "tool_timeout_seconds", "daily_call_budget", "log_retention_days", "store_question_text", "redact_personal_data", "arabic_digit_style"],
+ "fields": [
+  {"fieldname":"tools_enabled","fieldtype":"Check","label":"Tools Enabled","default":"0"},
+  {"fieldname":"llm_provider","fieldtype":"Select","label":"LLM Provider","options":"gemini\nopenai_compatible","default":"gemini"},
+  {"fieldname":"llm_base_url","fieldtype":"Data","label":"Local LLM Base URL"},
+  {"fieldname":"llm_model","fieldtype":"Data","label":"Local LLM Model"},
+  {"fieldname":"tool_calling_mode","fieldtype":"Select","label":"Tool Calling Mode","options":"native\njson_fallback","default":"native"},
+  {"fieldname":"business_data_mode","fieldtype":"Select","label":"Business Data Mode","options":"Disabled\nLocal LLM only\nHosted LLM, aggregated results only","default":"Disabled"},
+  {"fieldname":"hosted_consent","fieldtype":"Check","label":"Hosted Consent","default":"0"},
+  {"fieldname":"consented_by","fieldtype":"Link","options":"User","label":"Consented By","read_only":1},
+  {"fieldname":"consented_on","fieldtype":"Datetime","label":"Consented On","read_only":1},
+  {"fieldname":"pseudonymize_parties","fieldtype":"Check","label":"Pseudonymize Parties","default":"1"},
+  {"fieldname":"max_tool_iterations","fieldtype":"Int","label":"Max Tool Iterations","default":"4"},
+  {"fieldname":"max_rows","fieldtype":"Int","label":"Max Rows","default":"20"},
+  {"fieldname":"tool_timeout_seconds","fieldtype":"Float","label":"Tool Timeout Seconds","default":"10"},
+  {"fieldname":"daily_call_budget","fieldtype":"Int","label":"Daily Call Budget","default":"100"},
+  {"fieldname":"log_retention_days","fieldtype":"Int","label":"Log Retention Days","default":"90"},
+  {"fieldname":"store_question_text","fieldtype":"Check","label":"Store Question Text","default":"1"},
+  {"fieldname":"redact_personal_data","fieldtype":"Check","label":"Redact Personal Data","default":"1"},
+  {"fieldname":"arabic_digit_style","fieldtype":"Select","label":"Arabic Digit Style","options":"Western\nArabic-Indic","default":"Western"}
+ ],
+ "modified": "2026-10-04 00:00:00.000000",
+ "module": "Hw Ai Support",
+ "name": "HW AI Support Settings",
+ "permissions": [{"role":"System Manager","read":1,"write":1}]
+}
