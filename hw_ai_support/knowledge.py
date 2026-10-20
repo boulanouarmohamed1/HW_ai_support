@@ -57,7 +57,7 @@ def get_accessible_doctypes(user: str) -> list[dict]:
 	if cached := cache.get_value(key, shared=True):
 		return cached
 	entries = []
-	for row in frappe.get_all("DocType", fields=["name"], order_by="name"):
+	for row in frappe.get_list("DocType", fields=["name"], order_by="name", limit_page_length=1000):
 		doctype = row.name
 		try:
 			meta = _safe_meta(doctype)
@@ -86,10 +86,12 @@ def _doctype_label(doctype: str, lang: str) -> str:
 def _workspace_path(doctype: str, module: str, lang: str) -> str:
 	"""Find a v16 Workspace Link when available; module is safe fallback."""
 	try:
-		links = frappe.get_all("Workspace Link", filters={"link_type": "DocType", "link_to": doctype, "hidden": 0}, fields=["parent", "label"], limit=1)
-		if links:
-			workspace = frappe.get_value("Workspace", links[0].parent, "label") or links[0].parent
-			return f"{_translated(workspace, lang)} → {_translated(links[0].label or _doctype_label(doctype, lang), lang)}"
+		links = frappe.get_list("Workspace Link", filters={"link_type": "DocType", "link_to": doctype, "hidden": 0}, fields=["parent", "label"], limit_page_length=20)
+		for link in links:
+			if not frappe.has_permission("Workspace", "read", doc=link.parent):
+				continue
+			workspace = frappe.get_value("Workspace", link.parent, "label") or link.parent
+			return f"{_translated(workspace, lang)} → {_translated(link.label or _doctype_label(doctype, lang), lang)}"
 	except Exception:
 		pass
 	return f"{_translated(module, lang)} → {_doctype_label(doctype, lang)}"
@@ -146,10 +148,13 @@ def build_doctype_doc(doctype: str, user: str, lang: str) -> DoctypeKnowledge:
 		if df.fieldtype == "Select" and df.options:
 			detail += ": " + ", ".join(_translated(option, lang) for option in df.options.split("\n") if option)[:300]
 		elif df.fieldtype in {"Link", "Table", "Table MultiSelect"} and df.options:
-			names.add(df.options)
-			target = _doctype_label(df.options, lang)
-			labels[df.options] = target
-			detail += f" → {target}"
+			if frappe.has_permission(df.options, "read", user=user):
+				names.add(df.options)
+				target = _doctype_label(df.options, lang)
+				labels[df.options] = target
+				detail += f" → {target}"
+			else:
+				detail += f" → {_translated('a restricted document', lang)}"
 		elif df.fieldtype == "Dynamic Link":
 			# `options` is the controlling *fieldname*, not a DocType (for example,
 			# Quotation's Party uses the value selected in Quotation To). Never pass
@@ -171,8 +176,8 @@ def build_doctype_doc(doctype: str, user: str, lang: str) -> DoctypeKnowledge:
 	if outgoing:
 		lines.append("Links to: " + ", ".join(list(dict.fromkeys(outgoing))[:20]) + ".")
 	try:
-		incoming_rows = frappe.get_all("DocField", filters={"fieldtype": "Link", "options": doctype}, fields=["parent"], limit=15)
-		incoming = [_doctype_label(row.parent, lang) for row in incoming_rows if row.parent]
+		incoming_rows = frappe.get_list("DocField", filters={"fieldtype": "Link", "options": doctype}, fields=["parent"], limit_page_length=50)
+		incoming = [_doctype_label(row.parent, lang) for row in incoming_rows if row.parent and frappe.has_permission(row.parent, "read", user=user)]
 		if incoming:
 			lines.append("Referenced by: " + ", ".join(dict.fromkeys(incoming)) + ".")
 	except Exception:

@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 
 import frappe
 
-from hw_ai_support import llm
 from hw_ai_support.knowledge import DoctypeKnowledge, build_doctype_doc, get_accessible_doctypes
-from hw_ai_support.prompts import NORMALIZE_SYSTEM_PROMPT, normalization_messages
 from hw_ai_support.pdf_retrieval import retrieve_pdf_context
 
 SYNONYMS = {
@@ -56,7 +53,7 @@ def detect_language(text: str) -> str:
 	if re.search(r"[\u0600-\u06ff]", text):
 		return "ar"
 	# Accent and common word checks make fallback useful without a language SDK.
-	if re.search(r"[àâçéèêëîïôùûüÿœ]", text.lower()) or re.search(r"\b(comment|où|pourquoi|facture|commande|bonjour)\b", text.lower()):
+	if re.search(r"[àâçéèêëîïôùûüÿœ]", text.lower()) or re.search(r"\b(comment|où|pourquoi|facture|commande|bonjour|quelle|quelles|combien|fournisseur|retard|congé|bénéfice)\b", text.lower()):
 		return "fr"
 	return "en"
 
@@ -67,16 +64,8 @@ def _fallback(question: str) -> NormalizedQuery:
 
 
 def normalize_query(question: str) -> NormalizedQuery:
-	try:
-		payload = json.loads(llm.ask(NORMALIZE_SYSTEM_PROMPT, normalization_messages(question), json_mode=True))
-		language = payload.get("language") if payload.get("language") in {"en", "fr", "ar", "other"} else detect_language(question)
-		return NormalizedQuery(
-			language, bool(payload.get("in_scope")),
-			[str(item)[:80] for item in payload.get("english_keywords", []) if isinstance(item, str)][:12],
-			[str(item)[:100] for item in payload.get("likely_doctypes", []) if isinstance(item, str)][:8],
-		)
-	except Exception:
-		return _fallback(question)
+	"""Normalize locally to avoid an extra provider round-trip per question."""
+	return _fallback(question)
 
 
 def _tokens(value: str) -> set[str]:

@@ -20,6 +20,12 @@ doc_events = {
 	"Property Setter": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
 	"Workflow": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
 	"User": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Role": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"DocPerm": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Custom DocPerm": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"User Permission": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Has Role": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
+	"Role Permission for Page and Report": {"on_update": "hw_ai_support.knowledge.clear_knowledge_cache", "on_trash": "hw_ai_support.knowledge.clear_knowledge_cache"},
 }
 
 # Each item in the list will be shown as an app in the apps page

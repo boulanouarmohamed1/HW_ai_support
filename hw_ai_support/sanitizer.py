@@ -11,7 +11,8 @@ def sanitize(answer: str, known_names: set[str], labels: dict[str, str] | None =
 	for index, value in enumerate(protected_values or ()):
 		if not isinstance(value, str) or not value or value not in clean:
 			continue
-		key = "__HW_VALUE_{}_{}".format(index, "__")
+		# The placeholder must not match the generic snake_case scrubber below.
+		key = "HWPROTECTEDVALUE{}END".format(index)
 		protected[key] = value
 		clean = clean.replace(value, key)
 	for name in sorted(known_names, key=len, reverse=True):

@@ -11,6 +11,7 @@
 			</div>
 			<article v-for="(item, index) in messages" :key="index" class="hw-ai-message" :class="item.role" :dir="isArabic(item.content) ? 'rtl' : 'ltr'">
 				<div class="hw-ai-bubble" v-html="safeFormat(item.content)"></div>
+				<div v-if="item.sources?.length" class="hw-ai-sources">{{ __('Sources') }}: {{ item.sources.join(', ') }}</div>
 			</article>
 			<div v-if="waiting" class="hw-ai-typing">{{ __("HW AI Support is typing…") }}</div>
 		</div>
@@ -26,9 +27,9 @@
 import { nextTick } from "vue";
 
 const examples = {
-	en: ["What is a Sales Order?", "Where do I find customer invoices?", "Why is a delivery document used before invoicing?", "How do I create a quotation?"],
-	fr: ["Qu’est-ce qu’une commande client ?", "Où trouver les factures client ?", "Pourquoi utiliser un document de livraison ?", "Comment créer un devis ?"],
-	ar: ["ما هو أمر المبيعات؟", "أين أجد فواتير العملاء؟", "لماذا يُستخدم مستند التسليم قبل الفوترة؟", "كيف أنشئ عرض سعر؟"],
+	en: ["What is a Sales Order?", "How do I create a quotation?", "What is the stock for item SKU_001?", "Which supplier invoices are overdue?"],
+	fr: ["Qu’est-ce qu’une commande client ?", "Comment créer un devis ?", "Quel est le stock de l’article SKU_001 ?", "Quelles factures fournisseur sont en retard ?"],
+	ar: ["ما هو أمر المبيعات؟", "كيف أنشئ عرض سعر؟", "ما كمية مخزون الصنف SKU_001؟", "ما فواتير الموردين المتأخرة؟"],
 };
 
 export default {
@@ -50,12 +51,14 @@ export default {
 		async scroll() { await nextTick(); this.$refs.feed.scrollTop = this.$refs.feed.scrollHeight; },
 		async send() {
 			const content = this.message.trim(); if (!content || this.waiting) return;
+			const history = this.messages.filter(item => !item.error).slice(-10).map(({ role, content }) => ({ role, content }));
 			this.messages.push({ role: "user", content }); this.message = ""; this.waiting = true; this.scroll();
 			try {
-				const response = await frappe.call({ method: "hw_ai_support.api.chat", type: "POST", args: { message: content, history: this.messages.slice(-10), language: this.uiLanguage } });
-				this.messages.push({ role: "assistant", content: response.message.reply });
+				const response = await frappe.call({ method: "hw_ai_support.api.chat", type: "POST", args: { message: content, history, language: this.uiLanguage } });
+				const result = response.message || {};
+				this.messages.push({ role: "assistant", content: result.reply || __('The support service is temporarily unavailable. Please try again shortly.'), sources: result.sources || [], error: Boolean(result.error) });
 			} catch (error) {
-				this.messages.push({ role: "assistant", content: __("I couldn’t process that question. Please try again.") });
+				this.messages.push({ role: "assistant", content: __("I couldn’t process that question. Please try again."), error: true });
 			} finally { this.waiting = false; this.scroll(); }
 		},
 	},
@@ -68,4 +71,5 @@ export default {
 .hw-ai-feed { height:min(58vh, 600px); overflow-y:auto; padding:1rem; background:var(--subtle-fg); }.hw-ai-welcome { color:var(--text-muted); padding:1rem 0; }.hw-ai-examples { display:flex; flex-wrap:wrap; gap:.5rem; }.hw-ai-examples button { white-space:normal; text-align:start; }
 .hw-ai-message { display:flex; margin:.65rem 0; }.hw-ai-message.user { justify-content:flex-end; }.hw-ai-bubble { max-width:78%; padding:.7rem .9rem; border-radius:var(--border-radius-md); white-space:normal; overflow-wrap:anywhere; }.user .hw-ai-bubble { background:var(--primary); color:var(--primary-contrast); }.assistant .hw-ai-bubble { background:var(--fg-color); border:1px solid var(--border-color); color:var(--text-color); }.hw-ai-message[dir="rtl"] .hw-ai-bubble { text-align:right; }
 .hw-ai-typing { color:var(--text-muted); font-size:.875rem; padding:.5rem; }.hw-ai-composer { display:flex; gap:.75rem; padding:1rem; border-top:1px solid var(--border-color); }.hw-ai-composer textarea { flex:1; min-height:46px; max-height:130px; resize:vertical; border:1px solid var(--border-color); border-radius:var(--border-radius); padding:.65rem; background:var(--control-bg); color:var(--text-color); }.hw-ai-rtl { text-align:right; }.hw-ai-rtl .hw-ai-composer { flex-direction:row-reverse; } @media (max-width: 576px) { .hw-ai-header { align-items:flex-start; flex-direction:column; }.hw-ai-feed { height:55vh; }.hw-ai-bubble { max-width:92%; }.hw-ai-composer { align-items:flex-end; } }
+.hw-ai-sources { width:100%; padding:0 .9rem; color:var(--text-muted); font-size:.75rem; }.hw-ai-message.assistant { flex-wrap:wrap; }
 </style>
