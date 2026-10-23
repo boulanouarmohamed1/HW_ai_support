@@ -7,7 +7,7 @@ The app is designed for ERPNext v16 and does not modify Frappe or ERPNext core f
 ## What it supports
 
 - English, French, and Arabic question and answer flows. Arabic chat messages render right-to-left.
-- Site-specific explanations of permitted DocTypes, visible fields, workflows, and Desk locations, plus local lexical RAG over the app's bundled ERPNext reference PDF. Query matching expands common English/French/Arabic ERPNext terms and normalizes accents, Arabic variants, and plurals.
+- Site-specific explanations of permitted DocTypes, visible fields, workflows, and Desk locations, plus local lexical RAG over the bundled ERPNext reference PDF and a curated operational Markdown guide. Query matching expands common English/French/Arabic ERPNext terms and normalizes accents, Arabic variants, and plurals.
 - Phase 2 live answers for item search and stock balance, overdue Sales/Purchase Invoices, submitted sales totals, and the Profit and Loss Statement.
 - Gemini hosted models and OpenAI-compatible endpoints, including a local endpoint such as Ollama.
 - Server-side chat interaction logging, rate limits, a daily call budget, and configurable log retention.

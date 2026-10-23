@@ -8,9 +8,11 @@ import re
 import frappe
 
 from hw_ai_support.pdf_vector_store import retrieve_pdf_chunks
+from hw_ai_support.markdown_vector_store import retrieve_markdown_chunks
 from hw_ai_support.query_terms import CONCEPTS, STOP_WORDS, expand_terms, matched_concepts, normalize_text, tokens
 
 PDF_PATH = Path(__file__).resolve().parent / "resources" / "ERPNext_Documentation_and_Use_Cases.pdf"
+MARKDOWN_PATH = Path(__file__).resolve().parent / "resources" / "ERPNext_Phase2_Knowledge.md"
 _ALL_STOP_WORDS = set().union(*STOP_WORDS.values())
 
 
@@ -58,19 +60,31 @@ def _rerank(question: str, candidates: list[dict], expanded_terms: list[str]) ->
 
 
 def retrieve_pdf_context(question: str, keywords: list[str] | None = None) -> str:
-	"""Build or reuse the site's local PDF index and return grounded passages."""
-	if not PDF_PATH.is_file():
-		return ""
+	"""Retrieve and rank grounded passages from the PDF and curated Markdown guide."""
 	query_terms = keywords or expand_terms(question)
 	query = " ".join(dict.fromkeys(query_terms))
-	index_path = Path(frappe.get_site_path("private", "files", "hw_ai_support_erpnext_docs.sqlite3"))
+	hits = []
+	if PDF_PATH.is_file():
+		index_path = Path(frappe.get_site_path("private", "files", "hw_ai_support_erpnext_docs.sqlite3"))
+		try:
+			hits.extend(retrieve_pdf_chunks(query, pdf_path=PDF_PATH, db_path=index_path, limit=30))
+		except Exception:
+			frappe.log_error(title="HW AI Support PDF retrieval error", message=frappe.get_traceback())
 	try:
-		hits = retrieve_pdf_chunks(query, pdf_path=PDF_PATH, db_path=index_path, limit=30)
+		hits.extend(retrieve_markdown_chunks(question, query_terms, path=MARKDOWN_PATH, limit=12))
 	except Exception:
-		frappe.log_error(title="HW AI Support PDF retrieval error", message=frappe.get_traceback())
+		frappe.log_error(title="HW AI Support Markdown retrieval error", message=frappe.get_traceback())
+	if not hits:
 		return ""
-	hits = [hit for hit in _rerank(question, hits, query_terms) if hit.get("_retrieval_score", 0) >= 0.30]
-	return "\n\n".join(
-		f"ERPNext documentation PDF, page {hit['page']}:\n{hit['text']}"
-		for hit in hits
-	)
+	hits = [
+		hit for hit in _rerank(question, hits, query_terms)
+		if hit.get("_retrieval_score", 0) >= (0.26 if hit.get("heading") else 0.30)
+	]
+	passages = []
+	for hit in hits:
+		if hit.get("heading"):
+			source = f"; official reference: {hit['url']}" if hit.get("url") else ""
+			passages.append(f"Curated ERPNext reference, {hit['heading']} (source: {hit['source']}{source}):\n{hit['text']}")
+		else:
+			passages.append(f"ERPNext documentation PDF, page {hit['page']}:\n{hit['text']}")
+	return "\n\n".join(passages)

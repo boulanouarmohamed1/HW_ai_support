@@ -11,7 +11,7 @@ flowchart TD
   API --> VALID[Validate question, history, limits, and user]
   VALID --> ROUTE{Business insight question?}
   ROUTE -->|No - Phase 1| META[Find readable DocTypes for current user]
-  META --> CTX[Build context from live Frappe metadata and bundled reference PDF]
+  META --> CTX[Build context from live Frappe metadata, reference PDF, and curated Markdown guide]
   CTX --> LLM[Configured LLM]
   ROUTE -->|Yes - Phase 2| MODE{Tools enabled and data mode permitted?}
   MODE -->|No| DENY[Return localized disabled / consent message]
@@ -28,9 +28,9 @@ flowchart TD
 
 ### Phase 1: site-aware ERPNext guidance
 
-The backend identifies the question language locally and retrieves relevant content. The metadata index includes only DocTypes that the current user can read. For selected DocTypes, the app builds a compact description from live `frappe.get_meta()` data, translated labels, permitted Desk workspace links, relevant workflows, and readable linked DocTypes. The index is cached per user and invalidated after relevant metadata or permission changes. The app also retrieves relevant passages from the bundled ERPNext reference PDF.
+The backend identifies the question language locally and retrieves relevant content. The metadata index includes only DocTypes that the current user can read. For selected DocTypes, the app builds a compact description from live `frappe.get_meta()` data, translated labels, permitted Desk workspace links, relevant workflows, and readable linked DocTypes. The index is cached per user and invalidated after relevant metadata or permission changes. The app retrieves relevant passages from both the bundled ERPNext reference PDF and `hw_ai_support/resources/ERPNext_Phase2_Knowledge.md`.
 
-The LLM receives that context with a system prompt that limits answers to this ERPNext site and requires a grounded limitation when context is insufficient. PDF retrieval uses a local TF-IDF index; query terms are normalized and expanded with English/French/Arabic ERPNext synonyms before ranking. This is a lightweight lexical retriever, not a semantic embedding model, so different wording can still miss relevant passages. The response is sanitized before it is returned to Desk. Internal labels may be used for retrieval and sanitization but should not be shown as raw field identifiers.
+The LLM receives that context with a system prompt that limits answers to this ERPNext site and requires a grounded limitation when context is insufficient. PDF retrieval uses a local TF-IDF index; the curated Markdown source is split by heading and ranked with local TF-IDF. Query terms are normalized and expanded with English/French/Arabic ERPNext synonyms before ranking. This is a lightweight lexical retriever, not a semantic embedding model, so different wording can still miss relevant passages. The response is sanitized before it is returned to Desk. Internal labels may be used for retrieval and sanitization but should not be shown as raw field identifiers.
 
 ### Phase 2: permission-checked business insights
 

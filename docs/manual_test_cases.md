@@ -23,6 +23,8 @@
 11. After one successful and one refused question, inspect **AI Interaction Log** as an administrator; confirm the interaction statuses are recorded and question retention follows the setting.
 12. Check paraphrase retrieval with `How do I open an account?`, `Comment ouvrir un compte ?`, and `كيف أفتح حساباً؟`; each should retrieve account guidance rather than unrelated company or bank setup instructions.
 13. Check PDF retrieval with `How can I send a purchase invoice to my supplier by email?` and its French/Arabic equivalents; inspect the cited PDF source labels and verify the answer matches the reference material.
+14. `I want employees to request leave and their manager approves it. How can I do that?` — retrieve Leave Application, Leave Approver, and optional Workflow guidance; do not mention stock or sales.
+15. `Affiche le compte de résultat de cette année.` — answer in French with navigation and filters; do not invent current company figures without an enabled live report tool.
 
 ## Phase 2 live business data
 

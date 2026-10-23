@@ -61,7 +61,7 @@ CONCEPTS: dict[str, dict[str, tuple[str, ...]]] = {
 		"doctypes": ("Sales Invoice",),
 	},
 	"profit": {
-		"phrases": ("profit", "net profit", "profit and loss", "profit loss", "benefit", "bénéfice", "benefice", "résultat net", "الربح", "صافي الربح"),
+		"phrases": ("profit", "net profit", "profit and loss", "profit loss", "profit and loss statement", "income statement", "benefit", "bénéfice", "benefice", "résultat net", "compte de résultat", "compte de resultat", "état des résultats", "etat des resultats", "الربح", "صافي الربح"),
 		"doctypes": (),
 	},
 	"purchase receipt": {
@@ -73,8 +73,8 @@ CONCEPTS: dict[str, dict[str, tuple[str, ...]]] = {
 		"doctypes": ("Delivery Note",),
 	},
 	"employee leave": {
-		"phrases": ("leave application", "request leave", "employee leave", "vacation days", "leave balance", "demande de congé", "solde de congés", "jours de vacances", "طلب إجازة", "رصيد الإجازات", "أيام الإجازة"),
-		"doctypes": ("Leave Application", "Leave Allocation", "Employee"),
+		"phrases": ("leave application", "leave request", "request leave", "employee leave", "vacation days", "vacation request", "leave balance", "leave approver", "leave approval", "approve leave request", "manager approves leave", "demande de congé", "approbation des congés", "approbateur de congé", "solde de congés", "jours de vacances", "طلب إجازة", "رصيد الإجازات", "أيام الإجازة", "موافقة الإجازة", "مسؤول الموافقة على الإجازة"),
+		"doctypes": ("Leave Application", "Leave Allocation", "Leave Type", "Employee", "Department", "Workflow"),
 	},
 	"salary": {
 		"phrases": ("salary structure", "salary slip", "employee salary", "payroll", "salaire", "fiche de paie", "مسير الرواتب", "راتب الموظف"),
