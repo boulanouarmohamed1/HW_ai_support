@@ -1,18 +1,28 @@
 # HW AI Support
 
-HW AI Support is a read-only ERPNext v16 assistant for English, French, and Arabic. Phase 1 explains this site's permitted DocTypes, fields, workflows, and Desk locations. Phase 2 adds permission-checked business insight tools for stock, overdue invoices, sales totals, and the ERPNext Profit and Loss report.
+HW AI Support is a custom Frappe app that adds a multilingual AI support page to ERPNext. It explains ERPNext workflows using permission-filtered site metadata and bundled reference material (Phase 1), and can answer a limited set of questions with live, read-only ERP data (Phase 2).
 
-The app never writes ERPNext business records. Every tool call is checked server-side against the logged-in user; model output is not treated as permission to read anything. Unsupported employee leave, payroll, or other business questions are not answered with invented figures.
+The app is designed for ERPNext v16 and does not modify Frappe or ERPNext core files. It does not create, update, submit, cancel, or delete business records. The model cannot query the database directly: the server executes only registered tools after checking the current user's permissions.
+
+## What it supports
+
+- English, French, and Arabic question and answer flows. Arabic chat messages render right-to-left.
+- Site-specific explanations of permitted DocTypes, visible fields, workflows, and Desk locations, plus local lexical RAG over the app's bundled ERPNext reference PDF. Query matching expands common English/French/Arabic ERPNext terms and normalizes accents, Arabic variants, and plurals.
+- Phase 2 live answers for item search and stock balance, overdue Sales/Purchase Invoices, submitted sales totals, and the Profit and Loss Statement.
+- Gemini hosted models and OpenAI-compatible endpoints, including a local endpoint such as Ollama.
+- Server-side chat interaction logging, rate limits, a daily call budget, and configurable log retention.
+
+The assistant redirects unrelated questions and should report when grounded information or user permission is unavailable rather than inventing a process or business figure. The LLM is an external service when a hosted provider is selected; review the consent and data handling settings before enabling hosted business-data answers.
 
 ## Requirements
 
-- Frappe and ERPNext v16 installed on a bench.
-- Python dependencies from `pyproject.toml`; Node is only needed to build Desk assets.
-- One configured LLM: Gemini, or an OpenAI-compatible local server.
+- A Frappe bench with ERPNext v16 installed.
+- Python dependencies declared in `pyproject.toml`; Bench manages Frappe dependencies. Node.js/Yarn are needed to build Desk assets.
+- A reachable configured language model for answers. Business-data tools also require explicit administrator configuration and consent for hosted mode.
 
-## Install or update in a bench
+## Install or update
 
-For a new install, clone this app into the bench and install it on the site. If it is already installed, skip those first two commands.
+For a new installation, fetch the app and install it on the site:
 
 ```bash
 cd ~/frappe-bench
@@ -20,7 +30,7 @@ bench get-app https://github.com/boulanouarmohamed1/HW_ai_support.git
 bench --site development.localhost install-app hw_ai_support
 ```
 
-After copying/updating the app, run:
+For an existing installation, skip `get-app` and `install-app`. After installing or updating app files, run:
 
 ```bash
 cd ~/frappe-bench
@@ -29,64 +39,30 @@ bench build --app hw_ai_support
 bench --site development.localhost clear-cache
 ```
 
-Run the development server in one terminal with `bench start`. If it is already running, stop it with Ctrl+C in that terminal before starting it again; do not launch a second bench against the same Redis/HTTP ports. Open `http://development.localhost:8000/app/hw-ai-chat` and hard refresh the browser.
+Start the development bench in one terminal with `bench start`. If it is already running, use Ctrl+C in that terminal before starting another copy; duplicate Bench processes can contend for Redis and web ports. Open `http://development.localhost:8000/app/hw-ai-chat` and hard-refresh the page after building assets.
 
-## Configure the language model
+## Configure an LLM
 
-### Gemini hosted service
+The API credential belongs in the site's private configuration, never in JavaScript, source control, screenshots, or chat messages. See [LLM setup](docs/llm_setup.md) for provider setup, connectivity checks, and troubleshooting.
 
-Keep the API key in site configuration, never in this repository or browser code. Rotate a key if it has been shared in chat or screenshots.
+1. Set the provider and model credential/configuration.
+2. Open **HW AI Support Settings** in Desk and select the provider.
+3. For Phase 2, have a System Manager enable tools and select a business-data mode. Hosted mode requires explicit consent; local-only mode requires a reachable local endpoint.
+4. Check the configured provider from the Bench:
 
-```bash
-bench --site development.localhost set-config gemini_api_key "<YOUR_ROTATED_KEY>"
-bench --site development.localhost set-config gemini_model "gemini-2.5-flash"
-bench --site development.localhost clear-cache
-```
-
-In Desk, search for **HW AI Support Settings** and set **LLM Provider** to Gemini. For business insights, a System Manager must also enable **Tools Enabled**, select **Hosted LLM, aggregated results only**, and enable **Hosted Consent**. This explicitly allows the hosted model to receive the question and compact tool aggregates (for example an item stock total or invoice count and amount); it does not receive the underlying invoice rows. Leave tools disabled if hosted processing is not approved.
-
-Check connectivity from the bench:
-
-```bash
-bench --site development.localhost execute hw_ai_support.llm.ping
-```
-
-### OpenAI-compatible local model
-
-Configure **LLM Provider** as `openai_compatible`, **Local LLM Base URL** (for example `http://localhost:11434/v1`) and **Local LLM Model** in the settings DocType. Then choose **Local LLM only** and enable tools. The local endpoint must be reachable from the bench host. This provider does not require a key for localhost; a remote compatible endpoint uses `openai_api_key` in site config or `OPENAI_API_KEY` in the server environment.
-
-The assistant sends tool schemas to the model. ERPNext records are read only after the model asks for a registered tool, and the handler checks permissions and validates arguments before querying.
-
-## Supported Phase 2 tools
-
-| Tool | What it answers |
-|---|---|
-| Item search | Resolve an item name or code the user can access |
-| Stock balance | Current on-hand total for an item, optionally filtered to a permitted warehouse |
-| Overdue invoices | Count and outstanding total for submitted overdue Sales Invoices or Purchase Invoices |
-| Sales summary | Submitted sales invoice total and count for a date range, in company base currency |
-| Report data | `get_report_data` only accepts the allow-listed Profit and Loss Statement and summarizes its grounded figures |
-
-The tools are read-only. Employee leave balance, payroll, and arbitrary reports are not currently exposed through tools.
-
-## Test questions
-
-Start with one that must read live data:
-
-- `What is the stock for item SKU_001?`
-- `Which supplier invoices are overdue?`
-- `What were sales from 2026-01-01 to 2026-01-31?`
-- `What was the net profit from 2026-01-01 to 2026-01-31?`
-- `What is a Sales Order?` (knowledge / Phase 1)
-- `How do I create a quotation?` (knowledge / Phase 1)
-- `ما هو أمر المبيعات؟` and `Comment créer un devis ?` (language checks)
-- `What is the capital of France?` (should politely redirect)
-
-Use dates that exist in the site's accounting periods. The current stock and report values depend on your actual ERPNext data and the logged-in account's permissions.
+   ```bash
+   bench --site development.localhost execute hw_ai_support.llm.ping
+   ```
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [LLM setup](docs/llm_setup.md)
+- [Architecture and data flow](docs/architecture.md)
+- [LLM setup and troubleshooting](docs/llm_setup.md)
 - [User guide in English, French, and Arabic](docs/user_guide.md)
+- [Supported tools and boundaries](docs/tools_and_scope.md)
 - [Manual test cases](docs/manual_test_cases.md)
+- [Project requirement traceability](docs/requirements_traceability.md)
+
+## Current scope
+
+The implemented live-data tools are limited to the list in [Supported tools and boundaries](docs/tools_and_scope.md). Employee leave balance, payroll, generic arbitrary reports, and actions that write business records are not implemented in this release. The project brief describes actions as a later possibility; the current code intentionally remains read-only.

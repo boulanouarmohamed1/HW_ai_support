@@ -3,24 +3,14 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import frappe
 
 from hw_ai_support.knowledge import DoctypeKnowledge, build_doctype_doc, get_accessible_doctypes
 from hw_ai_support.pdf_retrieval import retrieve_pdf_context
+from hw_ai_support.query_terms import CONCEPTS, expand_terms, hinted_doctypes, matched_concepts, normalize_text, tokens
 
-SYNONYMS = {
-	"invoice": {"invoice", "facture", "فاتورة"},
-	"quotation": {"quotation", "quote", "devis", "عرض سعر", "عرض"},
-	"order": {"order", "commande", "طلب"},
-	"delivery": {"delivery", "livraison", "تسليم"},
-	"stock": {"stock", "inventory", "inventaire", "مخزون"},
-	"customer": {"customer", "client", "عميل"},
-	"supplier": {"supplier", "fournisseur", "مورد"},
-	"payment": {"payment", "paiement", "دفع"},
-	"credit note": {"credit note", "avoir", "إشعار دائن"},
-}
 OUT_OF_SCOPE = ("poem", "capital of", "write code", "politic", "weather", "recette", "poème", "météo", "عاصمة", "قصيدة", "طقس")
 
 
@@ -30,6 +20,7 @@ class NormalizedQuery:
 	in_scope: bool
 	keywords: list[str]
 	likely_doctypes: list[str]
+	concepts: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -59,8 +50,15 @@ def detect_language(text: str) -> str:
 
 
 def _fallback(question: str) -> NormalizedQuery:
-	words = re.findall(r"[\wÀ-ÿ\u0600-\u06ff]+", question.lower())
-	return NormalizedQuery(detect_language(question), not any(term in question.lower() for term in OUT_OF_SCOPE), words[:12], [])
+	normalized = normalize_text(question)
+	out_of_scope = any(normalize_text(term) in normalized for term in OUT_OF_SCOPE)
+	return NormalizedQuery(
+		detect_language(question),
+		not out_of_scope,
+		expand_terms(question),
+		hinted_doctypes(question),
+		matched_concepts(question),
+	)
 
 
 def normalize_query(question: str) -> NormalizedQuery:
@@ -68,20 +66,34 @@ def normalize_query(question: str) -> NormalizedQuery:
 	return _fallback(question)
 
 
-def _tokens(value: str) -> set[str]:
-	return {item.lower() for item in re.findall(r"[\wÀ-ÿ\u0600-\u06ff]+", value or "") if len(item) > 1}
+def _phrase_in(phrase: str, text: str) -> bool:
+	phrase = normalize_text(phrase)
+	return bool(phrase and f" {phrase} " in f" {text} ")
 
 
 def _score(entry: dict, normalized: NormalizedQuery) -> int:
 	# Internal names are used only locally for matching and are never sent to the LLM.
-	haystack = _tokens(" ".join(str(entry.get(key, "")) for key in ("name", "label", "module", "description")))
+	name = normalize_text(str(entry.get("name", "")))
+	label = normalize_text(str(entry.get("label", "")))
+	description = normalize_text(str(entry.get("description", "")))
+	module = normalize_text(str(entry.get("module", "")))
+	haystack = set(tokens(name + " " + label + " " + module + " " + description))
+	label_texts = [name, label]
 	for lang in ("en", "fr", "ar"):
-		haystack.update(_tokens(frappe._(entry["label"], lang=lang)))
-	words = set(normalized.keywords) | set(_tokens(" ".join(normalized.likely_doctypes)))
-	for canonical, variants in SYNONYMS.items():
-		if words & variants:
-			words.update(variants)
-	return sum(4 if token in _tokens(" ".join(normalized.likely_doctypes)) else 1 for token in words if token in haystack)
+		translated = normalize_text(frappe._(entry.get("label", ""), lang=lang))
+		label_texts.append(translated)
+		haystack.update(tokens(translated))
+	words = set(normalized.keywords)
+	score = sum(1 for token in words if token in haystack)
+	if name in {normalize_text(value) for value in normalized.likely_doctypes}:
+		score += 16
+	for concept in normalized.concepts:
+		definition = CONCEPTS[concept]
+		if any(_phrase_in(phrase, text) for phrase in definition["phrases"] for text in label_texts):
+			score += 8
+		elif entry.get("name") in definition["doctypes"]:
+			score += 7
+	return score
 
 
 def retrieve(question: str, user: str) -> RetrievalResult:
@@ -89,7 +101,7 @@ def retrieve(question: str, user: str) -> RetrievalResult:
 	if not normalized.in_scope:
 		return RetrievalResult(normalized, [], [], set(), {})
 	scored = [(entry, _score(entry, normalized)) for entry in get_accessible_doctypes(user)]
-	selected = [entry for entry, score in sorted(scored, key=lambda item: item[1], reverse=True) if score > 0][:5]
+	selected = [entry for entry, score in sorted(scored, key=lambda item: (-item[1], item[0]["name"])) if score > 0][:5]
 	documents: list[DoctypeKnowledge] = []
 	for entry in selected:
 		try:

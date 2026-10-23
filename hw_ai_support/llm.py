@@ -1,7 +1,7 @@
-"""Small provider boundary for hosted LLM calls.
+"""Provider boundary for hosted Gemini and OpenAI-compatible local models.
 
-Only this module knows about Gemini.  Keep application policy in prompts.py
-and API validation in api.py so this file can be replaced by another backend.
+Keep provider-specific request and credential handling here. Application policy
+belongs in prompts.py and request validation in api.py.
 """
 
 from __future__ import annotations
