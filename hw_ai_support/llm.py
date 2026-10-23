@@ -22,6 +22,7 @@ class LLMError(Exception):
 DEFAULT_MODEL = "gemini-2.5-flash"
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 REQUEST_TIMEOUT = 20
+LOCAL_REQUEST_TIMEOUT = 120
 
 
 def _key() -> str | None:
@@ -63,6 +64,11 @@ def _openai_messages(system: str, messages: list[dict[str, str]]) -> list[dict[s
 
 def _ask_openai(system: str, messages: list[dict[str, str]], tools: list[dict] | None = None, json_mode: bool = False, timeout: float = REQUEST_TIMEOUT) -> tuple[str, list[dict]]:
 	url, model, key = _openai_config()
+	request_timeout = max(1, timeout)
+	if is_local_endpoint():
+		# Local models may need extra time to load weights or generate the first
+		# response, especially on CPU. Avoid applying the short hosted timeout.
+		request_timeout = max(request_timeout, float(frappe.conf.get("hw_ai_local_request_timeout", LOCAL_REQUEST_TIMEOUT)))
 	payload: dict[str, Any] = {"model": model, "messages": _openai_messages(system, messages), "temperature": 0.1, "max_tokens": int(frappe.conf.get("hw_ai_max_output_tokens", 1024))}
 	if tools:
 		payload["tools"] = tools
@@ -73,7 +79,7 @@ def _ask_openai(system: str, messages: list[dict[str, str]], tools: list[dict] |
 	if key:
 		headers["Authorization"] = f"Bearer {key}"
 	try:
-		response = requests.post(url, headers=headers, json=payload, timeout=min(REQUEST_TIMEOUT, max(1, timeout)))
+		response = requests.post(url, headers=headers, json=payload, timeout=request_timeout)
 		if response.status_code >= 400:
 			raise _provider_error(f"OpenAI-compatible HTTP {response.status_code}")
 		choice = (response.json().get("choices") or [])[0]["message"]
