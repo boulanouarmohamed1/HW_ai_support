@@ -14,6 +14,7 @@ from hw_ai_support import llm
 from hw_ai_support.prompts import business_answer_prompt, business_tool_prompt, system_prompt
 from hw_ai_support.retrieval import detect_language, retrieve_with_labels
 from hw_ai_support.sanitizer import sanitize
+from hw_ai_support.query_terms import matched_concepts
 
 
 def _friendly_error(language: str) -> str:
@@ -42,6 +43,24 @@ def _parse_history(history) -> list[dict[str, str]]:
 		if item["role"] == "user":
 			clean.append({"role": "user", "content": content})
 	return clean
+
+
+def _relevant_history(history: list[dict[str, str]], message: str) -> list[dict[str, str]]:
+	"""Keep history only when it is a clear follow-up or shares the current topic."""
+	if not history:
+		return []
+	text = " ".join(message.casefold().split())
+	follow_up_prefixes = (
+		"and ", "also ", "what about ", "how about ", "why ", "tell me more", "explain that",
+		"et ", "mais ", "et pour ", "et ça", "qu'en est-il", "و ماذا", "وماذا", "هل هذا", "ماذا عن",
+	)
+	if text.startswith(follow_up_prefixes):
+		return history[-2:]
+	current_topics = set(matched_concepts(message))
+	if not current_topics:
+		return []
+	relevant = [item for item in history if current_topics.intersection(matched_concepts(item["content"]))]
+	return relevant[-2:]
 
 
 def _log(**values) -> None:
@@ -183,7 +202,7 @@ def chat(message: str | None = None, history=None, language: str | None = None) 
 		reply = _friendly_error(response_language)
 		_log(user=user, question=message, answer=reply, language=response_language, doctypes_used="", status="Rate Limited", sanitized=0, error="Per-minute request limit", response_time_ms=int((time.monotonic() - started) * 1000), intent="unknown")
 		return {"reply": reply, "language": response_language, "error": True}
-	history_items = _parse_history(history)
+	history_items = _relevant_history(_parse_history(history), message.strip())
 	if not _within_daily_budget(user):
 		reply = {"fr": "La limite quotidienne d’utilisation de l’assistance est atteinte. Réessayez demain.", "ar": "تم بلوغ حد الاستخدام اليومي للمساعدة. حاول مرة أخرى غداً."}.get(response_language, "The daily support usage limit has been reached. Please try again tomorrow.")
 		_log(user=user, question=message, answer=reply, language=response_language, doctypes_used="", status="Rate Limited", sanitized=0, response_time_ms=int((time.monotonic() - started) * 1000), intent="unknown")

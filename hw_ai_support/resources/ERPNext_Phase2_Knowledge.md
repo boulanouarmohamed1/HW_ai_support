@@ -101,6 +101,23 @@ When comparing the statement with the General Ledger, use matching company, date
 
 **Answer boundary:** a request such as “Show this year's Profit and Loss” needs an enabled live report tool, company context, fiscal-year dates, and permission to read the report. If those are unavailable, give the navigation steps above and state that you cannot fetch the site's figures.
 
+## Create or find a General Ledger account
+
+An ERPNext **Account** is part of a company's Chart of Accounts. If the user says “open an account,” clarify whether they mean create a General Ledger account, open a bank account record, or sign in to an ERPNext user account. Do not tell them to open a Payment Gateway DocType unless that exact DocType is present on the site and their question is about a payment integration. A **Payment Gateway Account** and a general **Account** are different records.
+
+To create a General Ledger account:
+
+1. Open **Accounting > Accounting Masters > Chart of Accounts** and select the company.
+2. Select the appropriate parent group in the account tree and choose **Add Child**.
+3. Enter the account name and account number if the company uses numbering.
+4. Select an Account Type for a specific purpose, such as Bank, Cash, Receivable, Payable, Tax, Stock, or Fixed Asset.
+5. Enable **Is Group** only if this account will contain child accounts. Group accounts organize the tree; ledger accounts receive accounting entries.
+6. Save the account.
+
+Do not create a duplicate account for a customer or supplier. ERPNext tracks party balances under the appropriate control account. Account creation and editing are subject to company and user permissions.
+
+Official source: [ERPNext Chart of Accounts](https://docs.frappe.io/erpnext/chart-of-accounts)
+
 ## Site-specific information to add before production
 
 This guide describes standard documentation, not this site's custom configuration. A System Manager should fill in and maintain these facts for the deployed site:
