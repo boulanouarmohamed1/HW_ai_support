@@ -1,4 +1,4 @@
-"""Permission-aware, read-only ERPNext data adapters."""
+"""Permission aware, read-only ERPNext data."""
 
 from __future__ import annotations
 
